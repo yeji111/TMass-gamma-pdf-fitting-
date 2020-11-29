@@ -8,11 +8,11 @@ void makeFit(TFile *f, TString name){
    double ne = h1-> Integral();
    
    TCanvas * c1 = new TCanvas(Form("c1_%s",name.Data()),"c",1);   
-   TF1 *f1 = new TF1("f1","[2]*TMath::GammaDist(x,1.+[0],0,[1])/(1+exp((20-x)/0.1))",0,250);
+   TF1 *f1 = new TF1("f1","5*[2]*TMath::GammaDist(x,1.+[0],0,[1])/(1+exp((20-x)/0.1))",0,250);
    f1->SetParNames("p","q","number of events");
    f1->SetParameter(0,0.); 
    f1->SetParameter(1,15.); 
-   f1->SetParameter(2,ne*5); 
+   f1->SetParameter(2,ne); 
    h1->Fit("f1","0","",0, 250);
    h1->Draw("HIST");
    h1->GetXaxis()->SetTitle("P_{T} [GeV]");
