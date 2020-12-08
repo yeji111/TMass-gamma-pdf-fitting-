@@ -13,7 +13,7 @@ void makeFit(TFile *f, TString name){
    f1->SetParameter(0,1.5); 
    f1->SetParameter(1,20.); 
    f1->SetParameter(2,ne); 
-   h1->Fit("f1","0","",30, 250);
+   h1->Fit("f1","0","",20, 250);
    h1->Draw("E, HIST");
    h1->GetXaxis()->SetTitle("P_{T} [GeV]");
    h1->GetYaxis()->SetTitle("Entries");
