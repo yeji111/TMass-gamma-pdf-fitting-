@@ -9,61 +9,66 @@
 #include "RooDataHist.h"
 using namespace RooFit;
 
-void makeFit(TFile *f_s, TFile *f_b){
+void makeFit(TFile *f, TString name){
 
-   gStyle->SetOptFit(1);
+    TH1F *h1 = (TH1F*) f->Get(Form("h_muon_pt_%s",name.Data()));
 
-   TTree *ntuple_s = (TTree*) f_s->Get("tree");
-   TTree *ntuple_b = (TTree*) f_b->Get("tree");
+    RooRealVar Muon1_pt("Muon1_pt", "P_{T} (GeV)", 0, 250);
+    RooRealVar p("p","p", 0., 10);
+    RooRealVar q("q","q", 20, 50);
+    RooFormulaVar p_("p_", "1+p", p); 
 
-   cout << "n. s = " << ntuple_s->GetEntries() << endl;
-   cout << "n. b = " << ntuple_b->GetEntries() << endl;
+    RooGenericPdf fermi("fermi", "1/(1+exp((30-Muon1_pt)/0.1))", Muon1_pt);
+    RooGamma gamma("gamma","gammadist",Muon1_pt,p_,q,RooConst(0));
+	   
+    RooProdPdf model("model", "model", RooArgSet(gamma, fermi));    
 
-   RooRealVar Muon1_pt("Muon1_pt", "P_{T} (GeV)", 0, 250);
-   RooDataSet *d_fake = new RooDataSet("d_fake", "dataset_fake", Muon1_pt, Import(*ntuple_s));
-   RooDataSet *db = new RooDataSet("db", "dataset_b", Muon1_pt, Import(*ntuple_b));
+    RooPlot *frame = Muon1_pt.frame(Title(Form("gammadist fitting to %s_muon",name.Data())));
+    RooDataHist dh("dh","dh",Muon1_pt, Import(*h1));
+    RooFitResult* result = model.fitTo(dh, Save());
+    dh.plotOn(frame, XErrorSize(0), DataError(RooAbsData::SumW2));
+    model.plotOn(frame, LineColor(kRed));
+    
+/*   ofstream file_1;
+   file_1.open ("roofit_p.txt", ios::app);
+   file_1 << Form("%s ",name.Data()) << p << p.getAsymErrorHi() << p.getAsymErrorLo() << "\n";
+   file_1.close();
 
-   d_fake->append(*db);
+   ofstream file_2;
+   file_2.open ("roofit_q.txt", ios::app);
+   file_2 << Form("%s ", name.Data()) << q << q.getAsymErrorHi() << q.getAsymErrorLo()<<"\n";
+   file_2.close();
 
-   RooRealVar mass("mass", "mass", 150., 0, 250);
-   RooRealVar ns("ns", "number of signal", 60000., 0, 10000);
-   RooRealVar nb("nb", "number of bg", 0., 1000, 10000);
- 
-   RooRealVar a1("a1","a1", 1.7867);
-   RooRealVar a2("a2","a2", -0.000442);
-   RooRealVar a3("a3","a3", 5.068);
-   RooRealVar a4("a4","a4", 0.1329);
-   RooRealVar p_b("b1","b1", 0.707647);
-   RooRealVar q_b("b2","b2", 42.8044);
+*/
+    double chi2 = frame->chiSquare();
+    cout << "This is chi2: " << chi2 << endl;
 
-   RooFormulaVar p_s("p_s", "a1+mass*a2", RooArgList(a1,mass,a2)); 
-   RooFormulaVar q_s("q_s","a3+mass*a4", RooArgList(a3,mass,a4)); 
+    model.paramOn(frame, Layout(0.7));
+    dh.statOn(frame, Layout(0.7, 0.99, 0.8));
+    
 
-   RooGenericPdf fermi("fermi", "1/(1+exp((20-Muon1_pt)/0.1))", Muon1_pt);
+    p.Print();
+    q.Print();
+    result->Print();
 
-   RooGamma gamma_s("gamma_s","gammadist_signal",Muon1_pt,p_s,q_s,RooConst(0));
-   RooGamma gamma_b("gamma_b","gammadist_bg",Muon1_pt,p_b,q_b,RooConst(0));
-  
-   RooAbsPdf* sig = RooClassFactory::makePdfInstance("sig","gamma_s*fermi", RooArgSet(gamma_s,fermi)) ;
-   RooAbsPdf* bg = RooClassFactory::makePdfInstance("bg","gamma_b*fermi", RooArgSet(gamma_b,fermi)) ;
+    TCanvas *c = new TCanvas(Form("c_muon_pt_roofit_%s", name.Data()),"c",1);
+    frame->Draw();
+    c->Print(Form("roofitting_%s.pdf",name.Data()));
 
-   RooAddPdf model("model","model",RooArgList(*sig,*bg),RooArgList(ns,nb));
-
-   RooPlot *frame = Muon1_pt.frame();
-   model.fitTo(*d_fake, Extended());
-   d_fake->plotOn(frame, Binning(50));
-   model.plotOn(frame);
-   frame->Draw();
-
-   ns.Print();
-   nb.Print();
-   mass.Print();
-
+    TFile fit("roofit.root","update");
+    frame->Write();
+    result->Write(Form("fitting_result_%s",name.Data()));
+    fit.Close();
 }
 
 void roofit(){
 
-   TFile *f_signal = new TFile("ntuple_s.root");
-   TFile *f_background = new TFile("ntuple_b.root");
-   makeFit(f_signal, f_background);
+   TFile *f_muon = new TFile("out.root");
+
+   makeFit(f_muon, "166");
+   makeFit(f_muon, "169");
+   makeFit(f_muon, "171");
+   makeFit(f_muon, "173");
+   makeFit(f_muon, "175");
+   makeFit(f_muon, "178");
 }
