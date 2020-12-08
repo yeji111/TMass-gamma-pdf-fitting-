@@ -18,7 +18,7 @@ void makeFit(TFile *f, TString name){
     RooRealVar q("q","q", 20, 50);
     RooFormulaVar p_("p_", "1+p", p); 
 
-    RooGenericPdf fermi("fermi", "1/(1+exp((30-Muon1_pt)/0.1))", Muon1_pt);
+    RooGenericPdf fermi("fermi", "1/(1+exp((20-Muon1_pt)/0.1))", Muon1_pt);
     RooGamma gamma("gamma","gammadist",Muon1_pt,p_,q,RooConst(0));
 	   
     RooProdPdf model("model", "model", RooArgSet(gamma, fermi));    
