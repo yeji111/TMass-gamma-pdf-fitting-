@@ -14,8 +14,8 @@ void Wmass(){
      auto df_s0_178 = df_178.Range(1000);
      auto df_s1_178 = df_s0_178.Define("goodMuon","Muon_pt >= 30 && abs(Muon_eta) < 2.5 && Muon_tightId && Muon_pfRelIso04_all < 0.15")
                                .Define("n_goodMuon","Sum(goodMuon)")
-                               .Define("WTmass","sqrt(Muon_pt*Met_sumEt*(1-cos(Muon_phi-MET_phi))")
-                               .Filter("(WTmass+MET_sumET)>=60", "WTmass Selection")
+                               .Define("WTmass","sqrt(Muon_pt*Met_pt*(1-cos(Muon_phi-MET_phi))")
+                               .Filter("(WTmass+MET_pt)>=60", "WTmass Selection")
                                .Filter("n_goodMuon == 1","Muon Selection");
     
 
