@@ -63,7 +63,8 @@ void makeFit(TFile *f){
    RooPlot *frame_sub = mass.frame(Range(165, 185));
    RooRealVar real_mass("real_mass", "real_mass", 172.5);
    real_mass.plotOn(frame_sub, ShiftToZero(), LineColor(kGreen));
-   mass.plotOn(frame_sub);
+   RooFormulaVar sub("sub","mass-real_mass", RooArgList(mass, real_mass)); 
+   sub.plotOn(frame_sub);
    frame_sub -> SetMinimum(-4);
    frame_sub -> SetMaximum(4);
 
