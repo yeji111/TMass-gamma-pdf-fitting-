@@ -23,7 +23,6 @@ void makeFit(TFile *f){
 
    //// Set Variables of model function ////
    RooRealVar mass("mass", "mass", 30, 150);
-   RooRealVar nf("ns", "number of fake", 0, 100000000);
    RooRealVar ni("ni","ni", 0.212);
    RooRealVar ns("ns","ns", -0.0006778);
    RooRealVar mui("mui","mui", 3.88);
@@ -41,7 +40,7 @@ void makeFit(TFile *f){
    RooGenericPdf lamda("lamda", "normalization*exp(-0.5*pow(((log(1+(Muon1_pt-mu)*sinh(tau*sqrt(log(4)))/(sigma*sqrt(log(4)))))/tau),2)+pow(tau,2))", RooArgList(normalization, Muon1_pt, mu, tau, sigma));
 
    //// Make model function ////
-   RooPoisson model("model", "poisson_constraints", Muon1_pt, lamda);
+   RooPoisson model("model", "poisson_constraints", num, lamda);
 
    //// Fitting data to model ////
    RooPlot *frame = Muon1_pt.frame();
