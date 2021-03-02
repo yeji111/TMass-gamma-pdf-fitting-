@@ -9,66 +9,87 @@
 #include "RooDataHist.h"
 using namespace RooFit;
 
-void makeFit(TFile *f, TString name){
+void makeFit(TFile *f){
 
-    TH1F *h1 = (TH1F*) f->Get(Form("h_muon_pt_%s",name.Data()));
+   //// Get histograms ////
+   TH1F *h = (TH1F*) f->Get("h_muon_pt_fake");
+   RooRealVar Muon1_pt("Muon1_pt", "P_{T} (GeV)", 30, 150);
+   RooDataHist data("data","dataset with muon_pt",Muon1_pt,h); 
 
-    RooRealVar Muon1_pt("Muon1_pt", "P_{T} (GeV)", 0, 250);
-    RooRealVar p("p","p", 0., 10);
-    RooRealVar q("q","q", 20, 50);
-    RooFormulaVar p_("p_", "1+p", p); 
+   cout << "n. fake = " << h->GetEntries() << endl;
 
-    RooGenericPdf fermi("fermi", "1/(1+exp((20-Muon1_pt)/0.1))", Muon1_pt);
-    RooGamma gamma("gamma","gammadist",Muon1_pt,p_,q,RooConst(0));
-	   
-    RooProdPdf model("model", "model", RooArgSet(gamma, fermi));    
+   //// Set variables of Constraints ////
+   RooRealVar num("num","number of fake data",h->GetEntries());
 
-    RooPlot *frame = Muon1_pt.frame(Title(Form("gammadist fitting to %s_muon",name.Data())));
-    RooDataHist dh("dh","dh",Muon1_pt, Import(*h1));
-    RooFitResult* result = model.fitTo(dh, Save());
-    dh.plotOn(frame, XErrorSize(0), DataError(RooAbsData::SumW2));
-    model.plotOn(frame, LineColor(kRed));
-    
-/*   ofstream file_1;
-   file_1.open ("roofit_p.txt", ios::app);
-   file_1 << Form("%s ",name.Data()) << p << p.getAsymErrorHi() << p.getAsymErrorLo() << "\n";
-   file_1.close();
+   //// Set Variables of model function ////
+   RooRealVar mass("mass", "mass", 30, 150);
+   RooRealVar nf("ns", "number of fake", 0, 100000000);
+   RooRealVar ni("ni","ni", 0.212);
+   RooRealVar ns("ns","ns", -0.0006778);
+   RooRealVar mui("mui","mui", 3.88);
+   RooRealVar mus("mus","mus", 0.1112);
+   RooRealVar sigi("sigi","sigi", -0.4083);
+   RooRealVar sigs("sigs","sigs", 0.1378);
+   RooRealVar taui("taui","taui", 0.7515);
+   RooRealVar taus("taus","taus", -0.001007);
 
-   ofstream file_2;
-   file_2.open ("roofit_q.txt", ios::app);
-   file_2 << Form("%s ", name.Data()) << q << q.getAsymErrorHi() << q.getAsymErrorLo()<<"\n";
-   file_2.close();
+   RooFormulaVar normalization("normalization", "ni+mass*ns", RooArgList(ni,mass,ns)); 
+   RooFormulaVar mu("mu","mui+mass*mus", RooArgList(mui,mass,mus)); 
+   RooFormulaVar sigma("sigma","sigi+mass*sigs", RooArgList(sigi,mass,sigs)); 
+   RooFormulaVar tau("tau","taui+mass*taus", RooArgList(taui,mass,taus)); 
+  
+   RooGenericPdf lamda("lamda", "normalization*exp(-0.5*pow(((log(1+(Muon1_pt-mu)*sinh(tau*sqrt(log(4)))/(sigma*sqrt(log(4)))))/tau),2)+pow(tau,2))", RooArgList(normalization, Muon1_pt, mu, tau, sigma));
 
-*/
-    double chi2 = frame->chiSquare();
-    cout << "This is chi2: " << chi2 << endl;
+   //// Make model function ////
+   RooPoisson model("model", "poisson_constraints", Muon1_pt, lamda);
 
-    model.paramOn(frame, Layout(0.7));
-    dh.statOn(frame, Layout(0.7, 0.99, 0.8));
-    
+   //// Fitting data to model ////
+   RooPlot *frame = Muon1_pt.frame();
+   RooFitResult* result = model.fitTo(data, Range(30,150), Save());
+   data.plotOn(frame);
+   model.plotOn(frame, LineColor(kBlue));
 
-    p.Print();
-    q.Print();
-    result->Print();
+   //// Fitting results ////
+   mass.Print();
+   result->Print();
 
-    TCanvas *c = new TCanvas(Form("c_muon_pt_roofit_%s", name.Data()),"c",1);
-    frame->Draw();
-    c->Print(Form("roofitting_%s.pdf",name.Data()));
+   //// create NLL ////
+   RooAbsReal *nll = model.createNLL(data);
+   RooPlot *frame_nll = mass.frame(Range(165, 185));
+   nll->plotOn(frame_nll, ShiftToZero());
+   frame_nll -> SetMinimum(0);
+   frame_nll -> SetMaximum(3);
 
-    TFile fit("roofit.root","update");
-    frame->Write();
-    result->Write(Form("fitting_result_%s",name.Data()));
-    fit.Close();
+   //// create distribution subtracted ////
+   RooPlot *frame_sub = mass.frame(Range(165, 185));
+   RooRealVar real_mass("real_mass", "real_mass", 172.5);
+   real_mass.plotOn(frame_sub, ShiftToZero(), LineColor(kGreen));
+   mass.plotOn(frame_sub);
+   frame_sub -> SetMinimum(-4);
+   frame_sub -> SetMaximum(4);
+
+   //// plot ////
+   TCanvas *c = new TCanvas("c_fake_fit","c",1);
+   gStyle->SetOptFit(1);
+   frame->Draw();
+   c->Print("fitting_fake.pdf");
+
+   TCanvas *c_nll = new TCanvas("c_fake_fit_nll","c",1);
+   frame_nll->Draw();
+   c_nll->Print("fitting_fake_nll.pdf");
+
+   TCanvas *c_sub = new TCanvas("c_fake_fit_sub","c",1);
+   frame_sub->Draw();
+   c_sub->Print("fitting_fake_sub.pdf");
+
+
+   TFile fake("fit_fake.root","update");
+   result->Write("fitting_result");
+   fake.Close();
 }
 
 void roofit(){
 
-   TFile *f_muon = new TFile("out.root");
-
-   makeFit(f_muon, "166");
-   makeFit(f_muon, "169");
-   makeFit(f_muon, "171");
-   makeFit(f_muon, "173");
-   makeFit(f_muon, "175");
-   makeFit(f_muon, "178");
+   TFile *f = new TFile("fake_data.root");
+   makeFit(f);
 }
